@@ -1,6 +1,13 @@
 //wait on all provided promises and insert
 //results back into the original array
 exports.wait = async (doMap, promises) => {
+  //single arg?
+  if (promises === undefined && Array.isArray(doMap)) {
+    promises = doMap;
+    doMap = true; //in most cases, we dont need the promise after its resolved
+  } else if (!Array.isArray(promises)) {
+    throw `Expected array of promises`;
+  }
   return new Promise((resolve, reject) => {
     let n = promises.length;
     if (n === 0) {
