@@ -120,51 +120,68 @@ exports.times = async (concurrency, n, fn) => {
 //that can be handed out at any given time.
 exports.TokenBucket = class TokenBucket {
   constructor(size) {
-    this.tokens = {};
-    this.numTokens = 0;
-    this.maxTokens = size;
-    this.queue = [];
+    this._tokens = {};
+    this._numTokens = 0;
+    this._maxTokens = size;
+    this._queue = [];
   }
+  get numTokens() {
+    return this._numTokens;
+  }
+  get maxTokens() {
+    return this._maxTokens;
+  }
+  get numQueued() {
+    return this._queue.length;
+  }
+  get numTotal() {
+    return this.numTokens + this.numQueued;
+  }
+  //take a token from the bucket!
   async take() {
+    //bucket has no more tokens, wait for
+    //one to be put back...
     if (this.numTokens === this.maxTokens) {
       let dequeue = null;
       let promise = new Promise(d => (dequeue = d));
-      this.queue.push(dequeue);
+      this._queue.push(dequeue);
       await promise;
     }
+    //take token from the bucket
     var t = Symbol();
-    this.tokens[t] = true;
-    this.numTokens++;
-    return this.put.bind(this, t);
+    this._numTokens++;
+    this._tokens[t] = true;
+    //put the token back into the bucket
+    const put = () => {
+      if (!this._tokens[t]) {
+        throw "invalid token";
+      }
+      this._numTokens--;
+      delete this._tokens[t];
+      if (this._queue.length > 0) {
+        let dequeue = this._queue.shift();
+        dequeue();
+      }
+    };
+    return put;
   }
-  put(t) {
-    if (!this.tokens[t]) {
-      throw "invalid token";
-    }
-    delete this.tokens[t];
-    this.numTokens--;
-    if (this.queue.length > 0) {
-      let dequeue = this.queue.shift();
-      dequeue();
-    }
-    return true;
-  }
-};
-
-exports.defer = async (run, after) => {
-  try {
-    let p = run();
-    return p && p.then ? await p : p;
-  } catch (err) {
-    throw err;
-  } finally {
-    let p = after();
-    if (p && p.then) {
-      await p;
+  //wrapper around take + return
+  async run(fn) {
+    let put = await this.take();
+    try {
+      return await fn(); //proxy
+    } catch (error) {
+      throw error; //proxy
+    } finally {
+      put();
     }
   }
 };
 
+//a queue is simply a one-slot token bucket
+exports.queue = () => new exports.TokenBucket(1);
+
+//sleep(milliseconds) !
 exports.sleep = async ms => new Promise(r => setTimeout(r, ms));
 
 //promisify a function. unlike node's
@@ -218,16 +235,26 @@ exports.promisify = function(fn) {
 if (require.main === module) {
   (async function main() {
     console.log("TEST SYNC");
-    let arr = [];
-    for (let i = 0; i < 25; i++) {
-      arr[i] = i + 1;
+    // let arr = [];
+    // for (let i = 0; i < 25; i++) {
+    //   arr[i] = i + 1;
+    // }
+    // arr = await exports.map(15, arr, async n => {
+    //   await exports.sleep(Math.random() * 1000);
+    //   let v = n * 10;
+    //   console.log(v);
+    //   return v;
+    // });
+    // console.log("DONE", arr.length);
+    let q = exports.queue();
+    for (let i = 0; i < 10; i++) {
+      q.run(async () => {
+        console.log(
+          `running function #${i + 1}, ` +
+            `queue ${q.numQueued} (${q.numTokens}/${q.maxTokens})`
+        );
+        await exports.sleep(100);
+      });
     }
-    arr = await exports.map(15, arr, async n => {
-      await exports.sleep(Math.random() * 1000);
-      let v = n * 10;
-      console.log(v);
-      return v;
-    });
-    console.log("DONE", arr.length);
   })();
 }
