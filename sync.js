@@ -258,3 +258,101 @@ if (require.main === module) {
     }
   })();
 }
+
+//run a diff against two sets.
+exports.diff = async run => {
+  if (!run || typeof run !== "object") {
+    throw `diff: Invalid run`;
+  }
+  const { prev, next } = run;
+  if (!Array.isArray(prev)) {
+    throw `diff: Expected "prev" array`;
+  } else if (!Array.isArray(next)) {
+    throw `diff: Expected "next" array`;
+  }
+  //find "prev" indexer
+  let { index, indexPrev = index, indexNext = index } = run;
+  if (typeof indexPrev === "string") {
+    const key = indexPrev;
+    indexPrev = o => o[key];
+  }
+  if (typeof indexPrev !== "function") {
+    throw `diff: Expected "index" function`;
+  }
+  //find "next" indexer
+  if (typeof indexNext === "string") {
+    const key = indexNext;
+    indexNext = o => o[key];
+  }
+  if (typeof indexNext !== "function") {
+    throw `diff: Expected "index" function`;
+  }
+  //find "equals" function
+  let { equal } = run;
+  if (!equal) {
+    equal = (p, n) => true;
+  } else if (typeof equal !== "function") {
+    throw `diff: Expected "equals" to be a function`;
+  }
+  //final results
+  const results = {
+    match: [],
+    create: [],
+    update: [],
+    delete: []
+  };
+  //note and ignore duplicate
+  const dupes = new Set();
+  //construct join map (index-key => item)
+  const join = {};
+  for (const prevItem of prev) {
+    const id = indexPrev(prevItem);
+    if (id in join) {
+      dupes.add(id);
+    } else {
+      join[id] = prevItem;
+    }
+  }
+  const joined = new Map();
+  //compare incoming to existing
+  for (const nextItem of next) {
+    const id = indexNext(nextItem);
+    const exists = id in join;
+    if (!exists) {
+      results.create.push(nextItem);
+      continue;
+    }
+    const prevItem = join[id];
+    if (equal(prevItem, nextItem)) {
+      results.match.push(nextItem);
+    } else {
+      results.update.push(nextItem);
+    }
+    joined.set(nextItem, prevItem);
+    delete join[id];
+  }
+  for (const id in join) {
+    const prevItem = join[id];
+    results.delete.push(prevItem);
+  }
+  for (const op in results) {
+    const set = results[op];
+    if (set.length === 0) {
+      continue;
+    }
+    const fn = run[op];
+    if (!fn) {
+      continue;
+    } else if (typeof fn !== "function") {
+      throw `diff: Expected "${op}" to be a function`;
+    }
+    for (let item of set) {
+      let other = joined.get(item);
+      let result = fn(item, other);
+      if (result instanceof Promise) {
+        await result;
+      }
+    }
+  }
+  return results;
+};
