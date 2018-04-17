@@ -287,13 +287,16 @@ exports.diff = async run => {
   if (typeof indexNext !== "function") {
     throw `diff: Expected "index" function`;
   }
-  //find "equals" function
+  //find "equals" function,
+  //by default, matching index implies matching items
   let { equal } = run;
   if (!equal) {
     equal = (p, n) => true;
   } else if (typeof equal !== "function") {
     throw `diff: Expected "equals" to be a function`;
   }
+  //optional
+  const { status } = run;
   //final results
   const results = {
     match: [],
@@ -335,6 +338,8 @@ exports.diff = async run => {
     const prevItem = join[id];
     results.delete.push(prevItem);
   }
+  //using results, build a set of all operations
+  const operations = [];
   for (const op in results) {
     const set = results[op];
     if (set.length === 0) {
@@ -348,11 +353,21 @@ exports.diff = async run => {
     }
     for (let item of set) {
       let other = joined.get(item);
-      let result = fn(item, other);
-      if (result instanceof Promise) {
-        await result;
-      }
+      operations.push({ fn, item, other });
     }
   }
+  //optionally report diff status
+  if (status) status.add(operations.length);
+  //execute all with <concurrency>
+  const { concurrency = 1 } = run;
+  exports.each(concurrency, operations, async ({ fn, item, other }) => {
+    let result = fn(item, other);
+    if (result instanceof Promise) {
+      await result;
+    }
+    //optionally report diff status
+    if (status) status.done(1);
+  });
+  //done!
   return results;
 };
