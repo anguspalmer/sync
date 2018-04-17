@@ -360,7 +360,7 @@ exports.diff = async run => {
   if (status) status.add(operations.length);
   //execute all with <concurrency>
   const { concurrency = 1 } = run;
-  exports.each(concurrency, operations, async ({ fn, item, other }) => {
+  await exports.each(concurrency, operations, async ({ fn, item, other }) => {
     let result = fn(item, other);
     if (result instanceof Promise) {
       await result;
