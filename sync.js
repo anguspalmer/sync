@@ -232,33 +232,6 @@ exports.promisify = function(fn) {
   };
 };
 
-if (require.main === module) {
-  (async function main() {
-    console.log("TEST SYNC");
-    // let arr = [];
-    // for (let i = 0; i < 25; i++) {
-    //   arr[i] = i + 1;
-    // }
-    // arr = await exports.map(15, arr, async n => {
-    //   await exports.sleep(Math.random() * 1000);
-    //   let v = n * 10;
-    //   console.log(v);
-    //   return v;
-    // });
-    // console.log("DONE", arr.length);
-    let q = exports.queue();
-    for (let i = 0; i < 10; i++) {
-      q.run(async () => {
-        console.log(
-          `running function #${i + 1}, ` +
-            `queue ${q.numQueued} (${q.numTokens}/${q.maxTokens})`
-        );
-        await exports.sleep(100);
-      });
-    }
-  })();
-}
-
 //run a diff against two sets.
 exports.diff = async run => {
   if (!run || typeof run !== "object") {
@@ -371,3 +344,19 @@ exports.diff = async run => {
   //done!
   return results;
 };
+
+if (require.main === module) {
+  (async function main() {
+    console.log("TEST SYNC");
+    let q = exports.queue();
+    for (let i = 0; i < 10; i++) {
+      q.run(async () => {
+        console.log(
+          `running function #${i + 1}, ` +
+            `queue ${q.numQueued} (${q.numTokens}/${q.maxTokens})`
+        );
+        await exports.sleep(100);
+      });
+    }
+  })();
+}
