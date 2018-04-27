@@ -71,32 +71,52 @@ exports.loop = async function(doMap, concurrency, arr, fn) {
   //need workers and a queue.
   //start!
   let queue = new Array(arr.length);
+  let error = null;
   async function worker() {
     //worker looks through all entries,
     //skipping entries already being worked on
     for (let i = 0; i < arr.length; i++) {
+      if (error) {
+        break;
+      }
+      //if queue[i] is undefined, then job "i" is free
+      //if queue[i] is true,      then job "i" is taken
       if (queue[i]) {
         continue;
       }
       queue[i] = true;
-      let d = arr[i];
-      let promise = fn(d, i);
-      if (!promise || !(promise instanceof Promise)) {
-        throw new Error("Function must return a promise");
-      }
-      let result = await promise;
-      //replace value with result
-      if (doMap) {
-        arr[i] = result;
+      //start!
+      try {
+        let d = arr[i];
+        let promise = fn(d, i);
+        if (!promise || !(promise instanceof Promise)) {
+          throw new Error("Function must return a promise");
+        }
+        let result = await promise;
+        //replace value with result
+        if (doMap) {
+          arr[i] = result;
+        }
+      } catch (err) {
+        //mark failure to ensure no more new jobs are accepted,
+        //but still complete the remaining jobs inflight.
+        error = true;
       }
     }
+    return;
   }
-  //start <concurrency> many workers
+  //create <concurrency> many workers
   let workers = [];
   for (let w = 1; w <= concurrency; w++) {
     workers.push(worker());
   }
+  //start <concurrency> many workers,
+  //blocks until all return
   await Promise.all(workers);
+  //encountered an error, throw it!
+  if (error !== null) {
+    throw error;
+  }
   //done!
   return arr;
 };
@@ -289,6 +309,9 @@ exports.diff = async run => {
       join[id] = prevItem;
     }
   }
+  if (dupes.size > 0) {
+    results.duplicate = Array.from(dupes);
+  }
   const joined = new Map();
   //compare incoming to existing
   for (const nextItem of next) {
@@ -315,7 +338,7 @@ exports.diff = async run => {
   const operations = [];
   for (const op in results) {
     const set = results[op];
-    if (set.length === 0) {
+    if (!set || set.length === 0) {
       continue;
     }
     const fn = run[op];
@@ -346,17 +369,33 @@ exports.diff = async run => {
 };
 
 if (require.main === module) {
+  console.log("TEST SYNC");
+  const sync = exports;
   (async function main() {
-    console.log("TEST SYNC");
-    let q = exports.queue();
-    for (let i = 0; i < 10; i++) {
-      q.run(async () => {
-        console.log(
-          `running function #${i + 1}, ` +
-            `queue ${q.numQueued} (${q.numTokens}/${q.maxTokens})`
-        );
-        await exports.sleep(100);
+    let starts = new Set();
+    let stops = new Set();
+    let results = null;
+    try {
+      const queries = [];
+      for (let i = 1; i <= 1000; i++) {
+        queries.push(i);
+      }
+      results = await sync.map(20, queries, async i => {
+        starts.add(i);
+        await sync.sleep(Math.random() * 20);
+        if (i === 700) {
+          throw `Hit ${i}`;
+        }
+        stops.add(i);
+        return { i };
       });
+    } catch (err) {
+      console.log(err);
     }
+    console.log("results:", results !== null);
+    console.log("starts:", starts.size);
+    console.log("stops:", stops.size);
+    await sync.sleep(1000);
+    console.log("stops:", stops.size);
   })();
 }
