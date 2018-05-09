@@ -100,7 +100,7 @@ exports.loop = async function(doMap, concurrency, arr, fn) {
       } catch (err) {
         //mark failure to ensure no more new jobs are accepted,
         //but still complete the remaining jobs inflight.
-        error = true;
+        error = err;
       }
     }
     return;
