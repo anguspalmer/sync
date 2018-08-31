@@ -185,7 +185,7 @@ exports.TokenBucket = class TokenBucket {
     };
     return put;
   }
-  //wrapper around take + return
+  //wrapper around take + put
   async run(fn) {
     let put = await this.take();
     try {
