@@ -368,6 +368,25 @@ exports.diff = async run => {
   return results;
 };
 
+exports.timer = {
+  start() {
+    const [s0, n0] = process.hrtime();
+    const stop = () => {
+      const [s1, n1] = process.hrtime();
+      const ms = (s1 - s0) / 1e3 + (n1 - n0) / 1e6;
+      return ms;
+    };
+    return stop;
+  }
+};
+
+exports.time = async (msg, fn) => {
+  const stop = exports.timer.start();
+  await fn();
+  const ms = stop();
+  console.log(`[sync.time] took ${ms}ms: ${msg}`);
+};
+
 if (require.main === module) {
   console.log("TEST SYNC");
   const sync = exports;
