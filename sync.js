@@ -418,3 +418,18 @@ if (require.main === module) {
     console.log("stops:", stops.size);
   })();
 }
+
+//async versions of fs methods
+const fs = require("fs");
+exports.readdir = exports.promisify(fs.readdir);
+exports.readDir = async (...args) => {
+  try {
+    return await exports.readdir(...args);
+  } catch (err) {
+    return null;
+  }
+};
+exports.stat = exports.promisify(fs.stat);
+exports.readFile = exports.promisify(fs.readFile);
+exports.writeFile = exports.promisify(fs.writeFile);
+exports.remove = exports.promisify(fs.unlink);
