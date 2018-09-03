@@ -370,11 +370,18 @@ exports.diff = async run => {
 
 exports.timer = {
   start() {
+    const d0 = +new Date();
     const [s0, n0] = process.hrtime();
     const stop = () => {
+      //use high-res timer if its a short timer
       const [s1, n1] = process.hrtime();
-      const ms = (s1 - s0) / 1e3 + (n1 - n0) / 1e6;
-      return ms;
+      let hrms = (s1 - s0) / 1e3 + (n1 - n0) / 1e6;
+      if (hrms > 0) {
+        return hrms;
+      }
+      //otherwise, use a normal date timer
+      const d1 = +new Date();
+      return d1 - d0;
     };
     return stop;
   }
@@ -421,6 +428,17 @@ if (require.main === module) {
 
 //async versions of fs methods
 const fs = require("fs");
+exports.mkdir = exports.promisify(fs.mkdir);
+exports.mkDir = async (...args) => {
+  try {
+    await exports.mkdir(...args);
+  } catch (err) {
+    if (err.code === "EEXIST") {
+      return null;
+    }
+    throw err;
+  }
+};
 exports.readdir = exports.promisify(fs.readdir);
 exports.readDir = async (...args) => {
   try {
