@@ -282,7 +282,10 @@ exports.diff = async run => {
   }
   //find "equals" function,
   //by default, matching index implies matching items
-  let { equal } = run;
+  let { equal, equals } = run;
+  if (!equal && equals) {
+    equal = equals;
+  }
   if (!equal) {
     equal = (p, n) => true;
   } else if (typeof equal !== "function") {
@@ -375,13 +378,16 @@ exports.timer = {
     const stop = () => {
       //use high-res timer if its a short timer
       const [s1, n1] = process.hrtime();
-      let hrms = (s1 - s0) / 1e3 + (n1 - n0) / 1e6;
-      if (hrms > 0) {
-        return hrms;
-      }
-      //otherwise, use a normal date timer
       const d1 = +new Date();
-      return d1 - d0;
+      const dms = d1 - d0;
+      //anything longer than a second should use low res timer
+      //since the hr timer will overflow 53 bits
+      if (dms > 1000) {
+        return dms;
+      }
+      //otherwise, use high-res timer
+      const hrms = (s1 - s0) / 1e3 + (n1 - n0) / 1e6;
+      return hrms;
     };
     return stop;
   }
