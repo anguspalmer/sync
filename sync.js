@@ -435,6 +435,13 @@ if (require.main === module) {
 //async versions of fs methods
 const fs = require("fs");
 exports.mkdir = exports.promisify(fs.mkdir);
+exports.readdir = exports.promisify(fs.readdir);
+exports.stat = exports.promisify(fs.stat);
+exports.readFile = exports.promisify(fs.readFile);
+exports.readFile = exports.promisify(fs.readFile);
+exports.writeFile = exports.promisify(fs.writeFile);
+exports.remove = exports.promisify(fs.unlink);
+//custom fs methods
 exports.mkDir = async (...args) => {
   try {
     await exports.mkdir(...args);
@@ -445,7 +452,6 @@ exports.mkDir = async (...args) => {
     throw err;
   }
 };
-exports.readdir = exports.promisify(fs.readdir);
 exports.readDir = async (...args) => {
   try {
     return await exports.readdir(...args);
@@ -453,7 +459,31 @@ exports.readDir = async (...args) => {
     return null;
   }
 };
-exports.stat = exports.promisify(fs.stat);
-exports.readFile = exports.promisify(fs.readFile);
-exports.writeFile = exports.promisify(fs.writeFile);
-exports.remove = exports.promisify(fs.unlink);
+exports.readBytes = (filepath, n, offset = 0) => {
+  return new Promise((resolve, reject) => {
+    if (n === 0) {
+      return resolve(Buffer.alloc(0));
+    }
+    fs.open(filepath, "r", (err, fd) => {
+      if (err) {
+        return reject(err);
+      }
+      let b = Buffer.alloc(n);
+      fs.read(fd, b, 0, n, offset, (err, wrote) => {
+        if (err) {
+          fs.close(fd, () => {});
+          return reject(err);
+        }
+        if (wrote < n) {
+          b = b.slice(0, wrote);
+        }
+        fs.close(fd, err => {
+          if (err) {
+            return reject(err);
+          }
+          resolve(b);
+        });
+      });
+    });
+  });
+};
