@@ -436,15 +436,25 @@ if (require.main === module) {
 const fs = require("fs");
 exports.mkdir = exports.promisify(fs.mkdir);
 exports.readdir = exports.promisify(fs.readdir);
-exports.stat = exports.promisify(fs.stat);
+exports._stat = exports.promisify(fs.stat);
 exports.readFile = exports.promisify(fs.readFile);
 exports.readFile = exports.promisify(fs.readFile);
 exports.writeFile = exports.promisify(fs.writeFile);
 exports.remove = exports.promisify(fs.unlink);
 //custom fs methods
+exports.stat = async (...args) => {
+  try {
+    return await exports._stat(...args);
+  } catch (err) {
+    if (err.code === "ENOENT") {
+      return null;
+    }
+    throw err;
+  }
+};
 exports.mkDir = async (...args) => {
   try {
-    await exports.mkdir(...args);
+    return await exports.mkdir(...args);
   } catch (err) {
     if (err.code === "EEXIST") {
       return null;
