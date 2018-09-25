@@ -381,13 +381,12 @@ exports.timer = {
       const d1 = +new Date();
       const dms = d1 - d0;
       //anything longer than a second should use low res timer
-      //since the hr timer will overflow 53 bits
       if (dms > 1000) {
         return dms;
       }
       //otherwise, use high-res timer
-      const hrms = (s1 - s0) / 1e3 + (n1 - n0) / 1e6;
-      return hrms;
+      const hrms = (s1 - s0) * 1e3 + (n1 - n0) / 1e6;
+      return hrms.toPrecision(6);
     };
     return stop;
   }
