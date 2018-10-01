@@ -399,38 +399,6 @@ exports.time = async (msg, fn) => {
   console.log(`[sync.time] took ${ms}ms: ${msg}`);
 };
 
-if (require.main === module) {
-  console.log("TEST SYNC");
-  const sync = exports;
-  (async function main() {
-    let starts = new Set();
-    let stops = new Set();
-    let results = null;
-    try {
-      const queries = [];
-      for (let i = 1; i <= 1000; i++) {
-        queries.push(i);
-      }
-      results = await sync.map(20, queries, async i => {
-        starts.add(i);
-        await sync.sleep(Math.random() * 20);
-        if (i === 700) {
-          throw `Hit ${i}`;
-        }
-        stops.add(i);
-        return { i };
-      });
-    } catch (err) {
-      console.log(err);
-    }
-    console.log("results:", results !== null);
-    console.log("starts:", starts.size);
-    console.log("stops:", stops.size);
-    await sync.sleep(1000);
-    console.log("stops:", stops.size);
-  })();
-}
-
 //async versions of fs methods
 const fs = require("fs");
 exports.mkdir = exports.promisify(fs.mkdir);
