@@ -128,10 +128,7 @@ exports.forEach = exports.each;
 
 //provide a number instead of array => each(concurrency, [0..n), fn)
 exports.times = async (concurrency, n, fn) => {
-  let indices = new Array(n);
-  for (let i = 0; i < n; i++) {
-    indices[i] = i;
-  }
+  let indices = new Array(n).fill(0).map((_, i) => i);
   return await exports.each(concurrency, indices, fn);
 };
 
