@@ -141,6 +141,7 @@ exports.TokenBucket = class TokenBucket {
     this._numTokens = 0;
     this._maxTokens = size;
     this._queue = [];
+    this._numTakes = 0;
   }
   get numTokens() {
     return this._numTokens;
@@ -156,16 +157,18 @@ exports.TokenBucket = class TokenBucket {
   }
   //take a token from the bucket!
   async take() {
+    const tid = ++this._numTakes;
+    const t = Symbol(tid);
+    //DEBUG const log = console.log.bind(console, `[${tid}]`);
     //bucket has no more tokens, wait for
     //one to be put back...
-    if (this.numTokens === this.maxTokens) {
+    if (this.numTotal >= this.maxTokens) {
       let dequeue = null;
       let promise = new Promise(d => (dequeue = d));
       this._queue.push(dequeue);
       await promise;
     }
     //take token from the bucket
-    var t = Symbol();
     this._numTokens++;
     this._tokens[t] = true;
     //put the token back into the bucket
