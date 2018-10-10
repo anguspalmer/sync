@@ -126,6 +126,9 @@ exports.map = exports.loop.bind(null, true);
 exports.each = exports.loop.bind(null, false);
 exports.forEach = exports.each;
 
+//NOTE: we used to have a exports.series, which looped with concurrency 1,
+//this was removed in favour of a simple "for(const item of arr) {...}" loop.
+
 //provide a number instead of array => each(concurrency, [0..n), fn)
 exports.times = async (concurrency, n, fn) => {
   let indices = new Array(n).fill(0).map((_, i) => i);
